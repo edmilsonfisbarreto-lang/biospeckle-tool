@@ -1,0 +1,1343 @@
+<!DOCTYPE html>
+<!-- Declaração do tipo de documento HTML5 -->
+<html lang="pt-BR">
+<!-- Abertura do documento HTML com idioma definido como português do Brasil -->
+
+<head>
+  <!-- Seção de cabeçalho: metadados, fontes e estilos visuais -->
+
+  <meta charset="UTF-8">
+  <!-- Define o conjunto de caracteres como UTF-8 (suporte a acentos e símbolos) -->
+
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <!-- Torna o layout responsivo: adapta a largura à tela do dispositivo (essencial para mobile) -->
+
+  <title>Biospeckle Tool — Online</title>
+  <!-- Título exibido na aba do navegador -->
+
+  <link href="https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Rajdhani:wght@300;400;600;700&display=swap" rel="stylesheet">
+  <!-- Importa as fontes do Google Fonts:
+       - Share Tech Mono: fonte monoespaçada usada em labels técnicos e displays
+       - Rajdhani: fonte principal da interface, usada em textos e botões -->
+
+  <style>
+    /* ======================================================
+       VARIÁVEIS CSS GLOBAIS — Paleta de cores da interface
+       ====================================================== */
+    :root {
+      --bg:      #0a0c0f; /* Cor de fundo principal (preto azulado escuro) */
+      --panel:   #111318; /* Cor dos painéis laterais */
+      --panel2:  #161a20; /* Cor dos painéis secundários (levemente mais claro) */
+      --border:  #1e2530; /* Cor das bordas e divisores */
+      --accent:  #00e5ff; /* Cor de destaque primária (ciano) — usada em labels ativos */
+      --accent2: #00ff88; /* Cor de destaque secundária (verde) — câmera ativa, toggles */
+      --accent3: #ff6b35; /* Cor de destaque terciária (laranja) — alertas e ações */
+      --text:    #c8d6e5; /* Cor do texto principal */
+      --text2:   #5a7a8a; /* Cor do texto secundário (menos importante) */
+      --text3:   #8faabb; /* Cor do texto intermediário */
+      --red:     #ff3b3b; /* Vermelho — botão desligar câmera */
+      --yellow:  #ffd600; /* Amarelo — aviso de sobrecarga */
+    }
+
+    /* Reset universal: remove margens/paddings padrões e garante box-model consistente */
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    /* Estilo do corpo da página */
+    body {
+      background: var(--bg);           /* Fundo escuro */
+      color: var(--text);              /* Texto em cinza claro */
+      font-family: 'Rajdhani', sans-serif; /* Fonte principal */
+      font-size: 15px;
+      min-height: 100vh;               /* Garante que a página ocupe ao menos a altura da tela */
+      overflow-x: hidden;              /* Impede scroll horizontal indesejado */
+    }
+
+    /* ======================================================
+       CABEÇALHO (HEADER)
+       ====================================================== */
+    header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;  /* Logo à esquerda, status à direita */
+      padding: 10px 20px;
+      background: var(--panel);
+      border-bottom: 1px solid var(--border);
+      position: relative;
+      z-index: 10;                     /* Garante que o header fique acima de outros elementos */
+    }
+
+    /* Container do logo (ícone + texto) */
+    .logo { display: flex; align-items: center; gap: 12px; }
+
+    /* Ícone circular animado do logo */
+    .logo-icon {
+      width: 36px; height: 36px;
+      background: conic-gradient(from 0deg, var(--accent), var(--accent2), var(--accent3), var(--accent));
+      /* Gradiente cônico que cria o efeito arco-íris girando */
+      border-radius: 6px;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 20px;
+      font-weight: bold;
+      color: #000;
+      animation: spin-glow 6s linear infinite; /* Animação contínua de rotação de matiz */
+      flex-shrink: 0;
+    }
+
+    /* Animação que rotaciona o matiz (hue) do gradiente e cria efeito de brilho */
+    @keyframes spin-glow {
+      0%   { filter: hue-rotate(0deg)   drop-shadow(0 0 6px var(--accent)); }
+      100% { filter: hue-rotate(360deg) drop-shadow(0 0 6px var(--accent)); }
+    }
+
+    .logo-text  { line-height: 1; }
+    .logo-title { font-size: 20px; font-weight: 700; letter-spacing: 2px; color: #fff; text-transform: uppercase; }
+    .logo-sub   { font-size: 11px; color: var(--accent); font-family: 'Share Tech Mono', monospace; letter-spacing: 3px; }
+
+    /* Área de status no header (ponto indicador + FPS) */
+    .header-status { display: flex; align-items: center; gap: 16px; font-family: 'Share Tech Mono', monospace; font-size: 11px; color: var(--text2); }
+
+    /* Ponto de status (cinza = inativo, verde piscando = ativo) */
+    .status-dot { width: 8px; height: 8px; border-radius: 50%; background: var(--text2); display: inline-block; margin-right: 5px; }
+    .status-dot.active { background: var(--accent2); box-shadow: 0 0 8px var(--accent2); animation: blink 1s infinite; }
+
+    /* Animação de piscar do ponto de status */
+    @keyframes blink { 0%,100%{opacity:1} 50%{opacity:.3} }
+
+    /* Display numérico do FPS atual */
+    .fps-display { background: var(--panel2); border: 1px solid var(--border); padding: 4px 10px; border-radius: 3px; color: var(--accent); font-family: 'Share Tech Mono', monospace; font-size: 13px; }
+
+    /* ======================================================
+       BARRA DE MENUS (ARQUIVO / AJUDA)
+       ====================================================== */
+    .menubar { display: flex; align-items: center; background: var(--panel2); border-bottom: 1px solid var(--border); padding: 0 10px; }
+
+    /* Item de menu com dropdown ao passar o mouse */
+    .menu-item { position: relative; padding: 8px 14px; cursor: pointer; color: var(--text3); font-size: 13px; font-weight: 600; letter-spacing: 1px; transition: color .2s; user-select: none; }
+    .menu-item:hover { color: var(--accent); }
+
+    /* Dropdown: oculto por padrão, exibido no hover */
+    .dropdown { display: none; position: absolute; top: 100%; left: 0; background: var(--panel); border: 1px solid var(--border); min-width: 220px; z-index: 100; box-shadow: 0 8px 24px rgba(0,0,0,.6); }
+    .menu-item:hover .dropdown { display: block; } /* Exibe dropdown ao passar o mouse no item pai */
+
+    /* Item dentro do dropdown */
+    .dropdown-item { padding: 9px 16px; cursor: pointer; color: var(--text3); font-size: 13px; display: flex; align-items: center; gap: 8px; transition: background .15s, color .15s; }
+    .dropdown-item:hover { background: var(--panel2); color: var(--accent); }
+
+    /* Separador visual dentro do dropdown */
+    .dropdown-sep { border-top: 1px solid var(--border); margin: 4px 0; }
+
+    /* ======================================================
+       LAYOUT PRINCIPAL — Grid de 3 colunas
+       Painel Esquerdo | Área Central | Painel Direito
+       ====================================================== */
+    .main {
+      display: grid;
+      grid-template-columns: 260px 1fr 280px; /* Larguras fixas para painéis laterais */
+      height: calc(100vh - 88px);             /* Altura total menos header+menubar */
+      overflow: hidden;
+    }
+
+    /* ======================================================
+       PAINEL ESQUERDO — Controles e parâmetros
+       ====================================================== */
+    .left-panel { background: var(--panel); border-right: 1px solid var(--border); display: flex; flex-direction: column; overflow-y: auto; }
+
+    /* Seção dentro do painel (com borda separadora) */
+    .panel-section { border-bottom: 1px solid var(--border); padding: 14px 16px; }
+
+    /* Título de cada seção do painel */
+    .section-title { font-size: 10px; letter-spacing: 3px; color: var(--text2); text-transform: uppercase; font-family: 'Share Tech Mono', monospace; margin-bottom: 12px; }
+
+    /* Botão principal de ligar/desligar câmera */
+    .cam-btn { width: 100%; padding: 12px; border: 1px solid var(--border); background: transparent; color: var(--text); font-family: 'Rajdhani', sans-serif; font-size: 15px; font-weight: 700; letter-spacing: 3px; cursor: pointer; text-transform: uppercase; transition: all .2s; position: relative; overflow: hidden; }
+    /* Efeito de preenchimento ao passar o mouse (pseudo-elemento) */
+    .cam-btn::before { content: ''; position: absolute; left: 0; top: 0; width: 0; height: 100%; background: var(--accent2); opacity: .1; transition: width .2s; }
+    .cam-btn:hover::before { width: 100%; }
+    /* Estado "ligar" (verde) e "desligar" (vermelho) */
+    .cam-btn.on  { border-color: var(--accent2); color: var(--accent2); box-shadow: 0 0 12px rgba(0,229,100,.15); }
+    .cam-btn.off { border-color: var(--red);     color: var(--red);     box-shadow: 0 0 12px rgba(255,59,59,.15); }
+
+    /* Lista de algoritmos disponíveis */
+    .algo-list { display: flex; flex-direction: column; gap: 8px; }
+
+    /* Item de algoritmo (radio visual) */
+    .algo-item { display: flex; align-items: center; gap: 10px; padding: 10px 12px; border: 1px solid var(--border); cursor: pointer; transition: all .2s; position: relative; }
+    .algo-item:hover { border-color: var(--accent); background: rgba(0,229,255,.04); }
+    /* Item selecionado: borda e fundo destacados + barra vertical ciano à esquerda */
+    .algo-item.selected { border-color: var(--accent); background: rgba(0,229,255,.08); }
+    .algo-item.selected::before { content: ''; position: absolute; left: 0; top: 0; width: 3px; height: 100%; background: var(--accent); }
+
+    /* Círculo de seleção (radio button customizado) */
+    .algo-radio { width: 12px; height: 12px; border: 1.5px solid var(--text2); border-radius: 50%; flex-shrink: 0; transition: all .2s; }
+    .algo-item.selected .algo-radio { border-color: var(--accent); background: var(--accent); box-shadow: 0 0 6px var(--accent); }
+
+    .algo-name { font-weight: 600; font-size: 14px; color: var(--text3); }
+    .algo-item.selected .algo-name { color: var(--accent); }
+    .algo-desc { font-size: 11px; color: var(--text2); margin-top: 1px; }
+
+    /* Linha de controle deslizante (label + slider + valor) */
+    .control-row { display: flex; align-items: center; justify-content: space-between; margin-bottom: 12px; gap: 10px; }
+    .control-label { font-size: 12px; color: var(--text2); font-family: 'Share Tech Mono', monospace; white-space: nowrap; min-width: 80px; }
+    .control-val   { font-size: 12px; color: var(--accent); font-family: 'Share Tech Mono', monospace; min-width: 32px; text-align: right; }
+
+    /* Slider (range) customizado — remove estilo padrão do navegador */
+    input[type=range] { -webkit-appearance: none; flex: 1; height: 3px; background: var(--border); outline: none; border-radius: 2px; }
+    input[type=range]::-webkit-slider-thumb { -webkit-appearance: none; width: 12px; height: 12px; border-radius: 50%; background: var(--accent); cursor: pointer; box-shadow: 0 0 6px var(--accent); }
+
+    /* Select (dropdown nativo) com estilo da interface */
+    select { background: var(--panel2); border: 1px solid var(--border); color: var(--text); padding: 5px 8px; font-family: 'Share Tech Mono', monospace; font-size: 12px; outline: none; cursor: pointer; flex: 1; }
+    select:focus { border-color: var(--accent); }
+
+    /* Linha de toggle (label + chave on/off) */
+    .toggle-row   { display: flex; align-items: center; justify-content: space-between; margin-bottom: 10px; }
+    .toggle-label { font-size: 12px; color: var(--text3); }
+
+    /* Chave toggle (switch) customizada */
+    .toggle { width: 36px; height: 18px; background: var(--border); border-radius: 9px; position: relative; cursor: pointer; transition: background .2s; }
+    .toggle.on { background: var(--accent); } /* Ativado: fundo ciano */
+    /* Bolinha branca deslizante */
+    .toggle::after { content: ''; position: absolute; width: 14px; height: 14px; background: #fff; border-radius: 50%; top: 2px; left: 2px; transition: left .2s; }
+    .toggle.on::after { left: 20px; } /* Move bolinha para direita quando ativo */
+
+    /* ======================================================
+       ÁREA CENTRAL — Visualização do vídeo processado
+       ====================================================== */
+    .center-area { display: flex; flex-direction: column; background: #08090b; overflow: hidden; }
+
+    /* Barra de abas acima do vídeo */
+    .tabs { display: flex; background: var(--panel2); border-bottom: 1px solid var(--border); }
+    .tab { padding: 10px 18px; cursor: pointer; font-size: 12px; font-weight: 600; letter-spacing: 2px; color: var(--text2); text-transform: uppercase; border-bottom: 2px solid transparent; transition: all .2s; font-family: 'Share Tech Mono', monospace; }
+    .tab:hover { color: var(--text); }
+    .tab.active { color: var(--accent); border-bottom-color: var(--accent); } /* Aba ativa: texto e borda ciano */
+
+    /* Grid que contém os canvas de visualização — 1 coluna, 1 linha */
+    .canvases { flex: 1; display: grid; grid-template-columns: 1fr; grid-template-rows: 1fr; gap: 2px; padding: 2px; background: #05060a; overflow: hidden; }
+
+    /* Wrapper de cada canvas individual */
+    .canvas-wrapper { position: relative; background: #0a0b0f; border: 1px solid var(--border); overflow: hidden; display: flex; align-items: center; justify-content: center; }
+
+    /* Label sobreposto no canto superior esquerdo do canvas */
+    .canvas-label { position: absolute; top: 8px; left: 8px; font-family: 'Share Tech Mono', monospace; font-size: 10px; color: var(--text2); letter-spacing: 2px; z-index: 2; background: rgba(0,0,0,.6); padding: 2px 6px; }
+
+    /* Estilo dos elementos canvas (preenchimento proporcional sem distorção) */
+    canvas { max-width: 100%; max-height: 100%; object-fit: contain; image-rendering: pixelated; }
+
+    /* Efeito de linhas de varredura (scanlines) sobre o vídeo — estético */
+    .scanline { position: absolute; top: 0; left: 0; right: 0; bottom: 0; background: repeating-linear-gradient(0deg, transparent, transparent 2px, rgba(0,229,255,.015) 2px, rgba(0,229,255,.015) 4px); pointer-events: none; z-index: 1; }
+
+    /* ======================================================
+       PAINEL DIREITO — Histograma, estatísticas e info
+       ====================================================== */
+    .right-panel { background: var(--panel); border-left: 1px solid var(--border); display: flex; flex-direction: column; overflow-y: auto; }
+
+    /* Canvas do histograma de intensidade */
+    .hist-canvas-wrap { width: 100%; padding: 10px 14px; }
+    #histCanvas { width: 100%; height: 120px; display: block; border: 1px solid var(--border); background: #08090b; }
+
+    /* Grade de 4 estatísticas (média, desvio padrão, mín, máx) */
+    .stat-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+    .stat-box  { background: var(--panel2); border: 1px solid var(--border); padding: 10px; text-align: center; }
+    .stat-val  { font-family: 'Share Tech Mono', monospace; font-size: 20px; font-weight: bold; color: var(--accent); }
+    .stat-lbl  { font-size: 10px; color: var(--text2); letter-spacing: 1px; margin-top: 2px; }
+
+    /* Barra de status inferior (mensagens do sistema) */
+    .statusbar { padding: 6px 16px; background: var(--panel2); border-top: 1px solid var(--border); font-family: 'Share Tech Mono', monospace; font-size: 11px; color: var(--text2); display: flex; align-items: center; gap: 20px; }
+    .statusbar .msg { color: var(--accent2); flex: 1; } /* Mensagem principal em verde */
+
+    /* Legenda de cores da paleta pseudo-color */
+    .color-legend { width: 100%; height: 16px; border-radius: 2px; background: linear-gradient(to right, #0000ff, #00ffff, #00ff00, #ffff00, #ff0000); margin: 6px 0; border: 1px solid var(--border); }
+    /* Labels dos valores na legenda (0, 64, 128, 192, 255) */
+    .legend-labels { display: flex; justify-content: space-between; font-family: 'Share Tech Mono', monospace; font-size: 9px; color: var(--text2); margin-top: 2px; }
+
+    /* Scrollbar customizada (Webkit) */
+    ::-webkit-scrollbar { width: 5px; }
+    ::-webkit-scrollbar-track { background: var(--bg); }
+    ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
+    ::-webkit-scrollbar-thumb:hover { background: var(--text2); }
+
+    /* Elemento de vídeo oculto — usado apenas para captura de frames internamente */
+    #videoEl { display: none; }
+
+    /* Overlay exibido quando a câmera está desligada */
+    .overlay-off { position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; background: rgba(8,9,11,.8); z-index: 3; }
+    .overlay-off svg { opacity: .2; margin-bottom: 12px; }
+    .overlay-off p { font-family: 'Share Tech Mono', monospace; font-size: 12px; color: var(--text2); letter-spacing: 2px; }
+
+    /* Seções de parâmetros: ocultas por padrão, exibidas quando ativas */
+    .param-section { display: none; }
+    .param-section.active { display: block; }
+
+    /* ======================================================
+       AVISO DE ORIENTAÇÃO RETRATO (somente mobile)
+       Exibido automaticamente via media query quando o celular
+       está em modo vertical (portrait)
+       ====================================================== */
+    #portraitWarning { display: none; position: fixed; inset: 0; z-index: 9999; background: var(--bg); flex-direction: column; align-items: center; justify-content: center; text-align: center; padding: 40px; }
+    #portraitWarning .pw-icon { font-size: 64px; margin-bottom: 24px; animation: rotate-hint 2s ease-in-out infinite; }
+    /* Animação que simula a rotação do dispositivo */
+    @keyframes rotate-hint { 0%,100%{transform:rotate(0deg)} 40%{transform:rotate(90deg)} 60%{transform:rotate(90deg)} }
+    #portraitWarning h2 { font-size: 22px; font-weight: 700; letter-spacing: 3px; text-transform: uppercase; color: #fff; margin-bottom: 12px; }
+    #portraitWarning p { font-size: 14px; color: var(--text3); font-family: 'Share Tech Mono', monospace; letter-spacing: 1px; line-height: 1.8; }
+    /* Ativa o aviso apenas em telas pequenas na orientação vertical */
+    @media (orientation: portrait) and (max-width: 768px) { #portraitWarning { display: flex; } }
+  </style>
+</head>
+<body>
+
+<!-- Elemento de vídeo oculto: recebe o stream da câmera ou arquivo de vídeo -->
+<!-- muted: sem áudio | playsinline: evita fullscreen no iOS | autoplay: inicia automaticamente -->
+<video id="videoEl" autoplay playsinline muted></video>
+
+<!-- Canvas auxiliar oculto: usado para capturar frames do vídeo antes do processamento -->
+<canvas id="offCanvas" style="display:none"></canvas>
+
+<!-- Overlay de aviso de orientação — exibido apenas quando o celular está na vertical -->
+<div id="portraitWarning">
+  <div class="pw-icon">📱</div>
+  <h2>Gire o Dispositivo</h2>
+  <p>Para usar o Biospeckle Tool<br>no celular, utilize o aparelho<br>na <strong style="color:var(--accent)">orientação horizontal</strong>.</p>
+</div>
+
+<!-- ======================================================
+     CABEÇALHO: Logo + Indicador de status + FPS
+     ====================================================== -->
+<header>
+  <div class="logo">
+    <div class="logo-icon">🌱</div> <!-- Ícone animado da aplicação -->
+    <div class="logo-text">
+      <div class="logo-title">Biospeckle Tool</div>
+      <div class="logo-sub">Sistema de análise de Biospeckle</div>
+    </div>
+  </div>
+  <div class="header-status">
+    <!-- Ponto indicador de status da câmera (verde piscando = ativo) -->
+    <span><span class="status-dot" id="camDot"></span><span id="camStatus">CÂMERA INATIVA</span></span>
+    <!-- Display do FPS calculado em tempo real -->
+    <div class="fps-display"><span id="fpsLive">0</span> FPS</div>
+  </div>
+</header>
+
+<!-- ======================================================
+     BARRA DE MENUS
+     ====================================================== -->
+<div class="menubar">
+
+  <!-- Menu ARQUIVO: operações de arquivo -->
+  <div class="menu-item">ARQUIVO
+    <div class="dropdown">
+      <!-- Salva o frame atual do canvas de processamento como PNG -->
+      <div class="dropdown-item" onclick="saveProcessed()">💾 Salvar Imagem</div>
+      <!-- Abre seletor de arquivo para carregar vídeo local -->
+      <div class="dropdown-item" onclick="loadVideo()">📂 Abrir Vídeo (.mp4 / .webm)</div>
+      <div class="dropdown-sep"></div>
+      <!-- Abre o repositório GitHub em nova aba para download offline -->
+      <div class="dropdown-item" onclick="window.open('https://github.com/edmilsonfisbarreto-lang/Biospeckle-Tool','_blank')">⬇️ Download do App (Offline)</div>
+    </div>
+  </div>
+
+  <!-- Menu AJUDA: tutorial e informações sobre o sistema -->
+  <div class="menu-item">AJUDA
+    <div class="dropdown">
+      <!-- Abre a página de tutorial em nova aba -->
+      <div class="dropdown-item" onclick="window.open('tutorial.html','_blank')">📖 Tutorial</div>
+      <div class="dropdown-sep"></div>
+      <!-- Exibe caixa de diálogo com informações sobre o sistema -->
+      <div class="dropdown-item" onclick="showAbout()">ℹ️ Sobre</div>
+    </div>
+  </div>
+</div>
+
+<!-- ======================================================
+     LAYOUT PRINCIPAL: Painel Esquerdo | Centro | Painel Direito
+     ====================================================== -->
+<div class="main">
+
+  <!-- ====================================================
+       PAINEL ESQUERDO — Controles e seleção de algoritmo
+       ==================================================== -->
+  <div class="left-panel">
+
+    <!-- Seção: Controle da câmera -->
+    <div class="panel-section">
+      <div class="section-title">Controle de Câmera</div>
+      <!-- Botão de ligar/desligar câmera — alterna classes .on/.off via JS -->
+      <button class="cam-btn on" id="camBtn" onclick="toggleCamera()">⏻ LIGAR CÂMERA</button>
+      <!-- Seletor de câmera: oculto por padrão, exibido após obter permissão -->
+      <!-- Só aparece se houver mais de 1 câmera disponível no dispositivo -->
+      <div id="camSelectWrap" style="display:none; margin-top:10px;">
+        <div class="control-label" style="margin-bottom:6px; display:block;">CÂMERA</div>
+        <!-- onChange: chama switchCamera() ao selecionar outro dispositivo de câmera -->
+        <select id="camSelect" onchange="switchCamera()" style="width:100%"></select>
+      </div>
+    </div>
+
+    <!-- Seção: Seleção do algoritmo de processamento -->
+    <div class="panel-section">
+      <div class="section-title">Algoritmo</div>
+      <div class="algo-list">
+
+        <!-- Opção: Imagem da câmera sem processamento -->
+        <!-- data-algo: identificador usado pelo JS para saber qual algoritmo foi clicado -->
+        <div class="algo-item selected" data-algo="camera" onclick="selectAlgo('camera')">
+          <div class="algo-radio"></div>
+          <div>
+            <div class="algo-name">Imagem da Câmera</div>
+            <div class="algo-desc">Sem processamento</div>
+          </div>
+        </div>
+
+        <!-- Opção: LASCA — Laser Speckle Contrast Analysis -->
+        <div class="algo-item" data-algo="lasca" onclick="selectAlgo('lasca')">
+          <div class="algo-radio"></div>
+          <div>
+            <div class="algo-name">LASCA</div>
+            <div class="algo-desc">Laser Speckle Contrast</div>
+          </div>
+        </div>
+
+        <!-- Opção: MHI — Motion History Image -->
+        <div class="algo-item" data-algo="mhi" onclick="selectAlgo('mhi')">
+          <div class="algo-radio"></div>
+          <div>
+            <div class="algo-name">MHI</div>
+            <div class="algo-desc">Motion History Image</div>
+          </div>
+        </div>
+
+        <!-- Opção: Detecção de Regiões de Atividade -->
+        <div class="algo-item" data-algo="regions" onclick="selectAlgo('regions')">
+          <div class="algo-radio"></div>
+          <div>
+            <div class="algo-name">Regiões</div>
+            <div class="algo-desc">Detecção de atividade</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Seção: Configurações de aquisição (FPS e toggles) -->
+    <div class="panel-section">
+      <div class="section-title">Aquisição</div>
+
+      <!-- Controle de FPS alvo (1-30 quadros por segundo) -->
+      <div class="control-row">
+        <span class="control-label">FPS ALVO</span>
+        <!-- oninput: chama updateFPS() a cada movimento do slider -->
+        <input type="range" id="fpsSlider" min="1" max="30" value="10" oninput="updateFPS(this)">
+        <span class="control-val" id="fpsVal">10</span>
+      </div>
+
+      <!-- Toggle para ativar/desativar o histograma de intensidade -->
+      <div class="toggle-row">
+        <span class="toggle-label">Histograma</span>
+        <div class="toggle on" id="histToggle" onclick="toggleHistogram()"></div>
+      </div>
+
+      <!-- Toggle para ativar/desativar o processamento de imagem -->
+      <div class="toggle-row">
+        <span class="toggle-label">Processamento</span>
+        <div class="toggle on" id="procToggle" onclick="toggleProc()"></div>
+      </div>
+    </div>
+
+    <!-- Parâmetros específicos para o modo: Imagem da Câmera -->
+    <!-- Visível apenas quando o algoritmo "camera" está selecionado -->
+    <div class="panel-section param-section active" id="params-camera">
+      <div class="section-title">Parâmetros — Câmera</div>
+      <!-- Toggle: aplica coloração artificial (pseudo-cores) à imagem da câmera -->
+      <div class="toggle-row">
+        <span class="toggle-label">Cor Artificial</span>
+        <div class="toggle" id="colorToggleCam" onclick="toggleColorCam()"></div>
+      </div>
+      <!-- Toggle: converte a imagem da câmera para escala de cinza -->
+      <div class="toggle-row">
+        <span class="toggle-label">Escala de Cinza</span>
+        <div class="toggle" id="grayToggleCam" onclick="toggleGrayCam()"></div>
+      </div>
+    </div>
+
+    <!-- Parâmetros específicos para o algoritmo LASCA -->
+    <div class="panel-section param-section" id="params-lasca">
+      <div class="section-title">Parâmetros — LASCA</div>
+      <!-- Toggle: exibe resultado em pseudo-cores ou escala de cinza -->
+      <div class="toggle-row">
+        <span class="toggle-label">Resultado Colorido</span>
+        <div class="toggle on" id="lascaColor" onclick="toggleVal('lascaColorVal')"></div>
+      </div>
+      <!-- Seletor do tamanho da janela deslizante (3, 5, 7 ou 9 pixels) -->
+      <div class="control-row">
+        <span class="control-label">JANELA</span>
+        <select id="lascaMask" onchange="updateParam()">
+          <option>3</option><option>5</option><option>7</option><option selected>9</option>
+        </select>
+      </div>
+      <!-- Seletor do passo (deslocamento da janela a cada iteração) -->
+      <div class="control-row">
+        <span class="control-label">PASSO</span>
+        <select id="lascaStep" onchange="updateParam()">
+          <option>1</option><option>2</option><option>3</option><option selected>9</option>
+        </select>
+      </div>
+      <!-- Toggle: trava o passo igual à janela (modo clássico LASCA) -->
+      <div class="toggle-row">
+        <span class="toggle-label">Travar (Clássico)</span>
+        <div class="toggle on" id="lascaLock" onclick="toggleLock()"></div>
+      </div>
+    </div>
+
+    <!-- Parâmetros específicos para o algoritmo MHI -->
+    <div class="panel-section param-section" id="params-mhi">
+      <div class="section-title">Parâmetros — MHI</div>
+      <!-- Toggle: exibe resultado em pseudo-cores ou escala de cinza -->
+      <div class="toggle-row">
+        <span class="toggle-label">Resultado Colorido</span>
+        <div class="toggle on" id="mhiColor" onclick="toggleVal('mhiColorVal')"></div>
+      </div>
+      <!-- Limiar de diferença entre frames para detecção de movimento (0-255) -->
+      <div class="control-row">
+        <span class="control-label">THRESHOLD</span>
+        <input type="range" id="mhiThresh" min="0" max="255" value="40" oninput="updateSlider(this,'mhiThreshVal')">
+        <span class="control-val" id="mhiThreshVal">40</span>
+      </div>
+      <!-- Número de frames armazenados no histórico de movimento -->
+      <div class="control-row">
+        <span class="control-label">BUFFER</span>
+        <input type="range" id="mhiBuf" min="2" max="32" value="8" oninput="updateSlider(this,'mhiBufVal')">
+        <span class="control-val" id="mhiBufVal">8</span>
+      </div>
+    </div>
+
+    <!-- Parâmetros específicos para o algoritmo Regiões -->
+    <div class="panel-section param-section" id="params-regions">
+      <div class="section-title">Parâmetros — Regiões</div>
+      <!-- Limiar de magnitude do gradiente para considerar como região ativa -->
+      <div class="control-row">
+        <span class="control-label">THRESHOLD</span>
+        <input type="range" id="regThresh" min="0" max="255" value="60" oninput="updateSlider(this,'regThreshVal')">
+        <span class="control-val" id="regThreshVal">60</span>
+      </div>
+      <!-- Raio do filtro de suavização aplicado antes da detecção -->
+      <div class="control-row">
+        <span class="control-label">BLUR RADIUS</span>
+        <input type="range" id="regBlur" min="1" max="4" value="2" oninput="updateSlider(this,'regBlurVal')">
+        <span class="control-val" id="regBlurVal">2</span>
+      </div>
+      <!-- Espessura visual do destaque vermelho nas regiões ativas -->
+      <div class="control-row">
+        <span class="control-label">ESPESSURA</span>
+        <input type="range" id="regWidth" min="1" max="5" value="2" oninput="updateSlider(this,'regWidthVal')">
+        <span class="control-val" id="regWidthVal">2</span>
+      </div>
+    </div>
+
+  </div><!-- fim .left-panel -->
+
+  <!-- ====================================================
+       ÁREA CENTRAL — Exibição do vídeo processado
+       ==================================================== -->
+  <div class="center-area">
+    <!-- Barra de aba única "AO VIVO" -->
+    <div class="tabs">
+      <div class="tab active">AO VIVO</div>
+    </div>
+
+    <!-- Container do canvas de processamento -->
+    <div class="canvases" id="canvasArea">
+      <div class="canvas-wrapper" id="procWrapper">
+        <div class="scanline"></div> <!-- Efeito de scanline (visual) -->
+        <!-- Label dinâmico: muda conforme o algoritmo selecionado -->
+        <span class="canvas-label" id="procLabel">IMAGEM DA CÂMERA</span>
+        <!-- Canvas principal: recebe os pixels processados frame a frame -->
+        <canvas id="procCanvas"></canvas>
+        <!-- Overlay exibido quando a câmera está desligada -->
+        <div class="overlay-off" id="camOverlay">
+          <svg width="60" height="60" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1">
+            <path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/>
+            <circle cx="12" cy="13" r="4"/>
+          </svg>
+          <p>CÂMERA DESLIGADA</p>
+          <p style="margin-top:6px;font-size:10px;opacity:.5">Clique em "Ligar Câmera"</p>
+        </div>
+      </div>
+    </div>
+
+    <!-- Barra de status inferior: exibe mensagens do sistema -->
+    <div class="statusbar">
+      <span class="msg" id="statusMsg">Sistema pronto. Aguardando câmera.</span>
+      <span id="statusWarn"></span> <!-- Aviso de sobrecarga (⚠) -->
+      <span id="statusFps" style="font-size:10px;color:var(--text2)"></span> <!-- FPS em tempo real -->
+    </div>
+  </div><!-- fim .center-area -->
+
+  <!-- ====================================================
+       PAINEL DIREITO — Histograma, estatísticas e info
+       ==================================================== -->
+  <div class="right-panel">
+
+    <!-- Histograma de intensidade em tempo real -->
+    <div class="panel-section">
+      <div class="section-title">Histograma</div>
+      <div class="hist-canvas-wrap">
+        <!-- Canvas do histograma: desenhado quadro a quadro pela função drawHistogram() -->
+        <canvas id="histCanvas" width="248" height="120"></canvas>
+      </div>
+    </div>
+
+    <!-- Estatísticas calculadas sobre o frame atual -->
+    <div class="panel-section">
+      <div class="section-title">Estatísticas</div>
+      <div class="stat-grid">
+        <div class="stat-box"><div class="stat-val" id="statMean">—</div><div class="stat-lbl">MÉDIA</div></div>
+        <div class="stat-box"><div class="stat-val" id="statStd">—</div><div class="stat-lbl">STD DEV</div></div>
+        <div class="stat-box"><div class="stat-val" id="statMin">—</div><div class="stat-lbl">MÍN</div></div>
+        <div class="stat-box"><div class="stat-val" id="statMax">—</div><div class="stat-lbl">MÁX</div></div>
+      </div>
+    </div>
+
+    <!-- Legenda visual da paleta de pseudo-cores -->
+    <div class="panel-section">
+      <div class="section-title">Paleta de Cores</div>
+      <!-- Gradiente de azul (inativo) a vermelho (muito ativo) -->
+      <div class="color-legend"></div>
+      <div class="legend-labels"><span>0</span><span>64</span><span>128</span><span>192</span><span>255</span></div>
+      <div style="margin-top:8px;font-family:'Share Tech Mono',monospace;font-size:10px;color:var(--text2)">
+        Azul → Ciano → Verde → Amarelo → Vermelho
+      </div>
+    </div>
+
+    <!-- Informações do frame atual -->
+    <div class="panel-section">
+      <div class="section-title">Info do Frame</div>
+      <div style="font-family:'Share Tech Mono',monospace;font-size:10px;color:var(--text2);line-height:1.8">
+        <div>RESOLUÇÃO: <span id="infoRes" style="color:var(--accent)">—</span></div>       <!-- Largura × Altura do vídeo -->
+        <div>FRAMES: <span id="infoFrames" style="color:var(--accent)">0</span></div>        <!-- Contador total de frames processados -->
+        <div>ALGORITMO: <span id="infoAlgo" style="color:var(--accent2)">CÂMERA</span></div> <!-- Algoritmo ativo -->
+        <div>TEMPO PROC: <span id="infoTime" style="color:var(--accent)">—</span></div>      <!-- Tempo de processamento em ms -->
+      </div>
+    </div>
+
+  </div><!-- fim .right-panel -->
+
+</div><!-- fim .main -->
+
+<!-- Input de arquivo oculto — ativado por loadVideo() para selecionar vídeo local -->
+<input type="file" id="videoInput" accept="video/*" style="display:none" onchange="loadVideoFile(this)">
+
+<!-- ======================================================
+     JAVASCRIPT — Lógica de processamento e controle
+     ====================================================== -->
+<script>
+
+// ============================================================
+// OBJETO DE ESTADO GLOBAL
+// Centraliza todas as variáveis de controle da aplicação
+// ============================================================
+const state = {
+  cameraOn:     false,      // Indica se a câmera/vídeo está ativo
+  algo:         'camera',   // Algoritmo atualmente selecionado
+  tab:          'live',     // Aba ativa (mantido para referência futura)
+  histEnabled:  true,       // Histograma habilitado/desabilitado
+  procEnabled:  true,       // Processamento de imagem habilitado/desabilitado
+  lascaColorVal: true,      // LASCA: resultado colorido (true) ou cinza (false)
+  mhiColorVal:  true,       // MHI: resultado colorido (true) ou cinza (false)
+  regOverlayVal: true,      // Regiões: sobrepor imagem original (mantido por compatibilidade)
+  camColorVal:  false,      // Câmera: aplicar pseudo-cores
+  camGrayVal:   false,      // Câmera: converter para escala de cinza
+  lascaLockVal: true,       // LASCA: passo travado igual à janela (modo clássico)
+  frameCount:   0,          // Contador de frames processados desde que a câmera foi ligada
+  mhiBuffer:    [],         // Buffer circular de frames em escala de cinza (para MHI)
+  stream:       null,       // Objeto MediaStream da câmera WebRTC
+  animId:       null,       // ID retornado por requestAnimationFrame (para cancelamento)
+  lastTime:     0,          // Timestamp do último frame processado (controle de FPS)
+  fpsTarget:    10,         // FPS alvo configurado pelo usuário
+  fpsActual:    0,          // FPS real calculado frame a frame
+  procTime:     0,          // Tempo de processamento do último frame (ms)
+  videoMode:    false       // Indica se está em modo de vídeo local (não câmera)
+};
+
+// Referências aos elementos DOM usados frequentemente
+const video   = document.getElementById('videoEl');    // Elemento <video> oculto
+const off     = document.getElementById('offCanvas'); // Canvas auxiliar oculto para captura
+const offCtx  = off.getContext('2d');                 // Contexto 2D do canvas auxiliar
+const procC   = document.getElementById('procCanvas'); // Canvas principal de exibição
+const procCtx = procC.getContext('2d');               // Contexto 2D do canvas de exibição
+const histC   = document.getElementById('histCanvas'); // Canvas do histograma
+const histCtx = histC.getContext('2d');               // Contexto 2D do histograma
+
+// ============================================================
+// CONVERSÃO ESCALA DE CINZA → PSEUDO-CORES
+// Mapeia um valor de intensidade (0-255) para a paleta:
+// 0-63:   Azul → Ciano
+// 64-127: Ciano → Verde
+// 128-191: Verde → Amarelo
+// 192-255: Amarelo → Vermelho
+// ============================================================
+function grayToColor(g) {
+  let r, gr, b;
+  if (g < 64)       { r=0;         gr=g*4;           b=255;              } // Azul → Ciano
+  else if (g < 128) { r=0;         gr=255;            b=255-(g-64)*4;     } // Ciano → Verde
+  else if (g < 192) { r=(g-128)*4; gr=255;            b=0;                } // Verde → Amarelo
+  else              { r=255;       gr=255-(g-192)*4;  b=0;                } // Amarelo → Vermelho
+  return [r, gr, b]; // Retorna array [R, G, B]
+}
+
+// ============================================================
+// ALGORITMO LASCA — Laser Speckle Contrast Analysis
+// Referência: Briers & Webster (1996)
+//
+// Para cada janela de tamanho mask×mask:
+//   Contraste = Desvio Padrão / Média
+// Regiões com maior atividade biológica têm menor contraste.
+//
+// Parâmetros:
+//   src  — ImageData com os pixels brutos da câmera
+//   w, h — largura e altura do frame em pixels
+// ============================================================
+function applyLASCA(src, w, h) {
+  // Lê os parâmetros da interface
+  const mask = parseInt(document.getElementById('lascaMask').value); // Tamanho da janela (3,5,7,9)
+  const step = state.lascaLockVal ? mask : parseInt(document.getElementById('lascaStep').value); // Passo da janela
+  const half = Math.floor(mask/2); // Metade da janela (raio)
+  const d = src.data;              // Array Uint8ClampedArray com pixels [R,G,B,A, R,G,B,A, ...]
+  const out = new Uint8ClampedArray(w * h * 4); // Array de saída (mesmo tamanho da entrada)
+
+  // Percorre a imagem com passo "step", excluindo bordas de tamanho "half"
+  for (let y = half; y < h - half; y += step) {
+    for (let x = half; x < w - half; x += step) {
+      let sum = 0, sumSq = 0, cnt = 0; // Acumuladores para média e variância
+
+      // Percorre os pixels dentro da janela mask×mask centrada em (x, y)
+      for (let ky = -half; ky <= half; ky++) {
+        for (let kx = -half; kx <= half; kx++) {
+          const idx = ((y+ky)*w + (x+kx))*4;           // Índice do pixel no array (×4 por RGBA)
+          const gray = (d[idx]*0.299 + d[idx+1]*0.587 + d[idx+2]*0.114); // Luminância (BT.601)
+          sum   += gray;       // Soma para calcular a média
+          sumSq += gray*gray;  // Soma dos quadrados para calcular a variância
+          cnt++;               // Contador de pixels na janela
+        }
+      }
+
+      const mean     = sum / cnt;                                         // Média de intensidade
+      const std      = Math.sqrt(Math.max(0, sumSq/cnt - mean*mean));     // Desvio padrão (evita raiz de negativo)
+      const contrast = mean > 0 ? std / mean : 0;                         // Contraste de speckle (K = σ/μ)
+      const gv       = Math.min(255, Math.round(contrast * 255 * 4));     // Mapeia para 0-255 (amplificado ×4)
+
+      // Preenche o bloco step×step com o valor calculado (evita recalcular pixels sobrepostos)
+      for (let sy = 0; sy < step && y+sy < h; sy++) {
+        for (let sx = 0; sx < step && x+sx < w; sx++) {
+          const oi = ((y+sy)*w + (x+sx))*4; // Índice do pixel de saída
+          if (state.lascaColorVal) {
+            const [r,g,b] = grayToColor(gv); // Aplica pseudo-cores
+            out[oi]=r; out[oi+1]=g; out[oi+2]=b; out[oi+3]=255;
+          } else {
+            out[oi]=gv; out[oi+1]=gv; out[oi+2]=gv; out[oi+3]=255; // Escala de cinza
+          }
+        }
+      }
+    }
+  }
+  return new ImageData(out, w, h); // Retorna o ImageData processado
+}
+
+// ============================================================
+// ALGORITMO MHI — Motion History Image
+// Referência: Godinho et al. (2012)
+//
+// Acumula diferenças entre frames consecutivos em um buffer
+// temporal, revelando o histórico de movimento da amostra.
+//
+// Parâmetros:
+//   src  — ImageData com os pixels brutos do frame atual
+//   w, h — largura e altura do frame em pixels
+// ============================================================
+function applyMHI(src, w, h) {
+  const thresh  = parseInt(document.getElementById('mhiThresh').value); // Limiar de sensibilidade (0-255)
+  const bufSize = parseInt(document.getElementById('mhiBuf').value);    // Tamanho do buffer temporal
+  const d = src.data; // Pixels do frame atual
+
+  // Converte o frame atual para escala de cinza (luminância BT.601)
+  const gray = new Uint8Array(w*h);
+  for (let i=0; i<w*h; i++) {
+    const idx = i*4;
+    gray[i] = Math.round(d[idx]*0.299 + d[idx+1]*0.587 + d[idx+2]*0.114);
+  }
+
+  // Adiciona o frame atual ao buffer e remove o mais antigo se necessário
+  state.mhiBuffer.push(gray);
+  if (state.mhiBuffer.length > bufSize) state.mhiBuffer.shift(); // Remove o frame mais antigo
+
+  const out = new Uint8ClampedArray(w*h*4); // Array de saída
+
+  // Aguarda ao menos 2 frames para calcular diferença
+  if (state.mhiBuffer.length < 2) {
+    for (let i=0; i<w*h; i++) { out[i*4+3]=255; } // Opacidade total, pixel preto
+    return new ImageData(out, w, h);
+  }
+
+  // Obtém o frame anterior e o atual do buffer
+  const prev = state.mhiBuffer[state.mhiBuffer.length-2]; // Frame N-1
+  const curr = state.mhiBuffer[state.mhiBuffer.length-1]; // Frame N (atual)
+
+  // Calcula a diferença absoluta pixel a pixel
+  for (let i=0; i<w*h; i++) {
+    const diff = Math.abs(curr[i] - prev[i]);           // Diferença de intensidade entre frames
+    const gv   = diff > thresh ? Math.min(255,diff*3) : 0; // Amplifica se acima do limiar; 0 caso contrário
+    const oi   = i*4; // Índice no array de saída
+    if (state.mhiColorVal) {
+      const [r,g,b] = grayToColor(gv); // Aplica pseudo-cores
+      out[oi]=r; out[oi+1]=g; out[oi+2]=b; out[oi+3]=255;
+    } else {
+      out[oi]=gv; out[oi+1]=gv; out[oi+2]=gv; out[oi+3]=255; // Escala de cinza
+    }
+  }
+  return new ImageData(out, w, h); // Retorna o ImageData do histórico de movimento
+}
+
+// ============================================================
+// ALGORITMO REGIÕES — Detecção de áreas de atividade
+//
+// Etapas:
+//   1. Converte para escala de cinza
+//   2. Aplica filtro de suavização (box blur) para reduzir ruído
+//   3. Calcula o gradiente (similar ao operador Sobel)
+//   4. Pixels com gradiente acima do limiar são destacados em vermelho
+//      sobre fundo em escala de cinza
+//
+// Parâmetros:
+//   src  — ImageData com os pixels brutos
+//   w, h — largura e altura do frame
+// ============================================================
+function applyRegions(src, w, h) {
+  const thresh = parseInt(document.getElementById('regThresh').value); // Limiar do gradiente
+  const blur   = parseInt(document.getElementById('regBlur').value);   // Raio do filtro de suavização
+  const d = src.data; // Pixels do frame atual
+
+  // ETAPA 1: Converter para escala de cinza (Float32 para maior precisão nos cálculos)
+  const gray = new Float32Array(w*h);
+  for (let i=0; i<w*h; i++) {
+    const idx = i*4;
+    gray[i] = d[idx]*0.299 + d[idx+1]*0.587 + d[idx+2]*0.114; // Luminância BT.601
+  }
+
+  // ETAPA 2: Aplicar filtro Box Blur (média de vizinhança) para suavizar ruído de speckle
+  const blurred = new Float32Array(w*h);
+  const r = blur*2+1; // Tamanho total do kernel (ex: blur=2 → kernel 5×5)
+  for (let y=0; y<h; y++) {
+    for (let x=0; x<w; x++) {
+      let sum=0, cnt=0;
+      // Soma os pixels na vizinhança de raio r
+      for (let ky=-r; ky<=r; ky++) {
+        for (let kx=-r; kx<=r; kx++) {
+          const nx=x+kx, ny=y+ky;
+          if (nx>=0 && nx<w && ny>=0 && ny<h) { // Verifica bordas
+            sum += gray[ny*w+nx];
+            cnt++;
+          }
+        }
+      }
+      blurred[y*w+x] = sum/cnt; // Valor suavizado = média da vizinhança
+    }
+  }
+
+  // ETAPA 3 e 4: Calcular gradiente e gerar imagem de saída
+  const out = new Uint8ClampedArray(w*h*4);
+
+  for (let y=1; y<h-1; y++) { // Ignora bordas de 1 pixel (sem vizinhança completa)
+    for (let x=1; x<w-1; x++) {
+      // Gradiente horizontal (diferença central em X)
+      const gx = blurred[y*w+x+1] - blurred[y*w+x-1];
+      // Gradiente vertical (diferença central em Y)
+      const gy = blurred[(y+1)*w+x] - blurred[(y-1)*w+x];
+      // Magnitude do gradiente (vetor resultante)
+      const mag = Math.sqrt(gx*gx + gy*gy);
+
+      const oi = (y*w+x)*4; // Índice do pixel no array de saída
+
+      // Fundo em escala de cinza para todos os pixels
+      const gv = Math.round(gray[y*w+x]);
+      out[oi]=gv; out[oi+1]=gv; out[oi+2]=gv; out[oi+3]=255;
+
+      // Se a magnitude do gradiente supera o limiar → destaca em vermelho puro
+      if (mag > thresh) {
+        out[oi]=255; out[oi+1]=0; out[oi+2]=0; out[oi+3]=255; // R=255, G=0, B=0
+      }
+    }
+  }
+  return new ImageData(out, w, h); // Retorna a imagem com regiões ativas em vermelho
+}
+
+// ============================================================
+// HISTOGRAMA DE INTENSIDADE
+//
+// Calcula e desenha o histograma de luminância do frame atual
+// no canvas #histCanvas, com barras coloridas usando a mesma
+// paleta de pseudo-cores dos algoritmos.
+// Também atualiza as estatísticas (média, desvio padrão, mín, máx).
+// ============================================================
+function drawHistogram(src) {
+  if (!state.histEnabled) return; // Sai se histograma estiver desativado
+
+  const d = src.data;
+  // Cria array de 256 bins inicializados com zero
+  const bins = new Array(256).fill(0);
+
+  // Conta quantos pixels têm cada valor de luminância (0-255)
+  for (let i=0; i<d.length; i+=4) {
+    const g = Math.round(d[i]*0.299 + d[i+1]*0.587 + d[i+2]*0.114); // Luminância
+    bins[g]++;
+  }
+
+  const maxBin = Math.max(...bins); // Maior contagem (para normalizar a altura das barras)
+  const cw = histC.width, ch = histC.height;
+
+  // Limpa o canvas e preenche com fundo escuro
+  histCtx.clearRect(0,0,cw,ch);
+  histCtx.fillStyle='#08090b';
+  histCtx.fillRect(0,0,cw,ch);
+
+  // Desenha linhas de grade horizontais (4 divisões)
+  histCtx.strokeStyle='#1a2030';
+  histCtx.lineWidth=1;
+  for (let i=0; i<=4; i++) {
+    const y = ch - Math.round(i/4*ch);
+    histCtx.beginPath(); histCtx.moveTo(0,y); histCtx.lineTo(cw,y); histCtx.stroke();
+  }
+
+  // Desenha as barras coloridas do histograma
+  for (let i=0; i<256; i++) {
+    const x  = Math.round(i/256*cw);                  // Posição X da barra
+    const bh = Math.round(bins[i]/maxBin*ch);          // Altura proporcional da barra
+    const [r,g,b] = grayToColor(i);                   // Cor da barra segundo a paleta
+    histCtx.fillStyle = `rgba(${r},${g},${b},0.8)`;
+    histCtx.fillRect(x, ch-bh, Math.max(1,cw/256), bh); // Barra de baixo para cima
+  }
+
+  // Calcula estatísticas do frame
+  let sum=0, sumSq=0, cnt=0, minV=255, maxV=0;
+  for (let i=0; i<d.length; i+=4) {
+    const g = Math.round(d[i]*0.299 + d[i+1]*0.587 + d[i+2]*0.114);
+    sum += g; sumSq += g*g; cnt++;
+    if (g < minV) minV=g;
+    if (g > maxV) maxV=g;
+  }
+  const mean = sum/cnt;
+  const std  = Math.sqrt(sumSq/cnt - mean*mean); // Desvio padrão
+
+  // Atualiza os campos de estatísticas na interface
+  document.getElementById('statMean').textContent = mean.toFixed(1);
+  document.getElementById('statStd').textContent  = std.toFixed(1);
+  document.getElementById('statMin').textContent  = minV;
+  document.getElementById('statMax').textContent  = maxV;
+}
+
+// ============================================================
+// LOOP PRINCIPAL DE PROCESSAMENTO
+//
+// Chamado pelo requestAnimationFrame a cada quadro disponível.
+// Controla o FPS, captura o frame do vídeo, aplica o algoritmo
+// selecionado e atualiza todos os elementos visuais.
+// ============================================================
+function loop(ts) {
+  // Se a câmera estiver desligada, interrompe o loop
+  if (!state.cameraOn) return;
+
+  // Controle de FPS: só processa se passou o intervalo mínimo entre frames
+  const interval = 1000 / state.fpsTarget; // Intervalo em ms entre frames
+  if (ts - state.lastTime < interval) {
+    state.animId = requestAnimationFrame(loop); // Aguarda o próximo frame
+    return;
+  }
+
+  // Calcula o FPS real baseado no tempo decorrido desde o último frame
+  const dt = ts - state.lastTime;
+  state.lastTime  = ts;
+  state.fpsActual = Math.round(1000/dt);
+  document.getElementById('fpsLive').textContent   = state.fpsActual;
+  document.getElementById('statusFps').textContent = `${state.fpsActual} FPS`;
+
+  // Obtém a resolução atual do vídeo (usa 320×240 como fallback)
+  const vw = video.videoWidth  || 320;
+  const vh = video.videoHeight || 240;
+  if (vw === 0) { state.animId = requestAnimationFrame(loop); return; } // Frame ainda não disponível
+
+  // Ajusta o canvas auxiliar à resolução do vídeo e captura o frame atual
+  off.width = vw; off.height = vh;
+  offCtx.drawImage(video, 0, 0, vw, vh);           // Desenha o frame do vídeo no canvas auxiliar
+  const rawData = offCtx.getImageData(0, 0, vw, vh); // Lê os pixels como ImageData
+
+  // Sincroniza as dimensões do canvas de saída com o vídeo
+  if (procC.width  !== vw) procC.width  = vw;
+  if (procC.height !== vh) procC.height = vh;
+
+  // Atualiza informações de resolução e contador de frames
+  document.getElementById('infoRes').textContent    = `${vw}×${vh}`;
+  document.getElementById('infoFrames').textContent = ++state.frameCount;
+
+  const t0 = performance.now(); // Marca início do processamento para medir tempo
+
+  // Prepara displayData: aplica filtros de câmera (cor artificial ou cinza) se necessário
+  let displayData = rawData; // Padrão: imagem original sem modificação
+  if (state.camColorVal) {
+    // Modo Cor Artificial: converte cada pixel para pseudo-cores
+    const cd = new Uint8ClampedArray(rawData.data.length);
+    for (let i=0; i<rawData.data.length; i+=4) {
+      const g = Math.round(rawData.data[i]*0.299 + rawData.data[i+1]*0.587 + rawData.data[i+2]*0.114);
+      const [r,gr,b] = grayToColor(g);
+      cd[i]=r; cd[i+1]=gr; cd[i+2]=b; cd[i+3]=255;
+    }
+    displayData = new ImageData(cd, vw, vh);
+  } else if (state.camGrayVal) {
+    // Modo Escala de Cinza: converte cada pixel para luminância
+    const cd = new Uint8ClampedArray(rawData.data.length);
+    for (let i=0; i<rawData.data.length; i+=4) {
+      const g = Math.round(rawData.data[i]*0.299 + rawData.data[i+1]*0.587 + rawData.data[i+2]*0.114);
+      cd[i]=g; cd[i+1]=g; cd[i+2]=g; cd[i+3]=255;
+    }
+    displayData = new ImageData(cd, vw, vh);
+  }
+
+  // Aplica o algoritmo selecionado e exibe o resultado no canvas principal
+  if (state.procEnabled && state.algo !== 'camera') {
+    let processed;
+    if      (state.algo === 'lasca')   processed = applyLASCA(rawData, vw, vh);   // Calcula contraste LASCA
+    else if (state.algo === 'mhi')     processed = applyMHI(rawData, vw, vh);     // Calcula histórico de movimento
+    else if (state.algo === 'regions') processed = applyRegions(rawData, vw, vh); // Detecta regiões ativas
+    if (processed) {
+      procCtx.putImageData(processed, 0, 0); // Exibe o resultado processado no canvas
+      drawHistogram(processed);              // Atualiza histograma com o frame processado
+    }
+  } else {
+    // Sem algoritmo ativo: exibe a imagem da câmera (com filtros opcionais)
+    procCtx.putImageData(displayData, 0, 0);
+    drawHistogram(rawData); // Histograma da imagem original
+  }
+
+  // Registra o tempo de processamento do frame
+  state.procTime = (performance.now() - t0).toFixed(1);
+  document.getElementById('infoTime').textContent = state.procTime + 'ms';
+
+  // Alerta de sobrecarga: quando o tempo real entre frames é 50% acima do alvo
+  if (dt > interval * 1.5 && state.fpsTarget > 5) {
+    document.getElementById('statusWarn').textContent  = '⚠ SOBRECARGA';
+    document.getElementById('statusWarn').style.color  = 'var(--yellow)';
+  } else {
+    document.getElementById('statusWarn').textContent  = ''; // Remove aviso
+  }
+
+  state.animId = requestAnimationFrame(loop); // Agenda o próximo frame
+}
+
+// ============================================================
+// GERENCIAMENTO DE CÂMERA
+// ============================================================
+
+// Enumera as câmeras disponíveis após obter permissão e preenche o <select>
+async function populateCameras() {
+  try {
+    const devices = await navigator.mediaDevices.enumerateDevices(); // Lista todos os dispositivos de mídia
+    const cameras = devices.filter(d => d.kind === 'videoinput');    // Filtra apenas câmeras de vídeo
+    const sel  = document.getElementById('camSelect');
+    const wrap = document.getElementById('camSelectWrap');
+
+    // Obtém o ID da câmera atualmente em uso (para pré-selecionar no dropdown)
+    const currentId = state.stream
+      ? state.stream.getVideoTracks()[0]?.getSettings()?.deviceId
+      : null;
+
+    sel.innerHTML = ''; // Limpa as opções anteriores
+
+    // Cria uma opção no <select> para cada câmera encontrada
+    cameras.forEach((cam, i) => {
+      const opt = document.createElement('option');
+      opt.value = cam.deviceId;
+      opt.textContent = cam.label || `Câmera ${i + 1}`; // Usa o label do sistema ou numeração
+      if (cam.deviceId === currentId) opt.selected = true; // Pré-seleciona a câmera ativa
+      sel.appendChild(opt);
+    });
+
+    // Exibe o seletor apenas se houver mais de 1 câmera disponível
+    wrap.style.display = cameras.length > 1 ? 'block' : 'none';
+  } catch(e) {} // Silencia erros (dispositivo sem câmera ou permissão negada)
+}
+
+// Inicia o stream de vídeo a partir de um deviceId específico ou com fallbacks automáticos
+async function startCameraById(deviceId) {
+  // Para qualquer stream anterior antes de iniciar um novo
+  if (state.stream) state.stream.getTracks().forEach(t => t.stop());
+
+  // Se um deviceId específico foi fornecido, tenta conectar diretamente a ele
+  if (deviceId && deviceId !== '') {
+    try { return await navigator.mediaDevices.getUserMedia({ video: { deviceId: { exact: deviceId } }, audio: false }); } catch(e) {}
+    try { return await navigator.mediaDevices.getUserMedia({ video: { deviceId: deviceId },            audio: false }); } catch(e) {}
+  }
+
+  // Fallbacks automáticos: tenta câmera traseira primeiro (ideal para mobile)
+  try { return await navigator.mediaDevices.getUserMedia({ video: { facingMode: { exact: 'environment' } }, audio: false }); } catch(e) {}
+  // Fallback: câmera traseira sem constraint exact (mais compatível)
+  try { return await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment' },            audio: false }); } catch(e) {}
+  // Fallback: qualquer câmera disponível
+  try { return await navigator.mediaDevices.getUserMedia({ video: true });                                                    } catch(e) {}
+  // Último recurso: constraint vazia
+  try { return await navigator.mediaDevices.getUserMedia({ video: {}, audio: false });                                        } catch(e) {}
+
+  // Se nenhuma tentativa funcionou, lança erro com mensagem descritiva
+  throw new Error('Permissão de câmera negada ou nenhuma câmera disponível. Verifique as permissões do navegador.');
+}
+
+// Troca de câmera em tempo real sem desligar/religar (chamado pelo <select>)
+async function switchCamera() {
+  if (!state.cameraOn) return; // Não faz nada se a câmera estiver desligada
+  const deviceId = document.getElementById('camSelect').value; // ID da câmera selecionada
+  try {
+    cancelAnimationFrame(state.animId);              // Para o loop de processamento
+    state.stream = await startCameraById(deviceId); // Inicia o novo stream
+    video.srcObject = state.stream;                  // Conecta o novo stream ao elemento <video>
+    await video.play();                              // Inicia a reprodução
+    state.lastTime = 0;                              // Reseta o contador de tempo
+    state.animId   = requestAnimationFrame(loop);   // Reinicia o loop de processamento
+    setStatus('Câmera alterada.');
+  } catch(e) {
+    setStatus('Erro ao trocar câmera: ' + e.message);
+  }
+}
+
+// Liga ou desliga a câmera (chamado pelo botão "Ligar/Desligar Câmera")
+async function toggleCamera() {
+  if (!state.cameraOn) {
+    // === LIGAR CÂMERA ===
+    try {
+      const deviceId = document.getElementById('camSelect').value || null; // ID selecionado (ou null = automático)
+      state.stream   = await startCameraById(deviceId); // Obtém o stream
+      video.srcObject = state.stream;                    // Conecta ao elemento <video> oculto
+      await video.play();                                // Inicia a reprodução do stream
+      state.cameraOn = true;
+      await populateCameras();                           // Preenche o seletor de câmeras (após ter permissão)
+
+      // Atualiza a interface para o estado "ativo"
+      document.getElementById('camBtn').textContent    = '⏻ DESLIGAR CÂMERA';
+      document.getElementById('camBtn').className      = 'cam-btn off';
+      document.getElementById('camDot').className      = 'status-dot active'; // Ponto verde piscando
+      document.getElementById('camStatus').textContent = 'CÂMERA ATIVA';
+      document.getElementById('camOverlay').style.display = 'none'; // Remove overlay de câmera desligada
+
+      setStatus('Câmera ativada. Iniciando processamento...');
+      state.lastTime = 0;
+      state.animId   = requestAnimationFrame(loop); // Inicia o loop de processamento
+    } catch(e) {
+      setStatus('Erro: ' + e.message);
+      alert('Erro ao acessar câmera:\n' + e.name + '\n' + e.message); // Mostra detalhes do erro
+    }
+  } else {
+    // === DESLIGAR CÂMERA ===
+    cancelAnimationFrame(state.animId);                              // Para o loop
+    if (state.stream) state.stream.getTracks().forEach(t=>t.stop()); // Para todas as faixas do stream
+    video.srcObject = null;                                           // Desconecta o stream do vídeo
+    state.cameraOn  = false;
+    state.mhiBuffer = []; // Limpa o buffer do MHI
+
+    // Atualiza a interface para o estado "inativo"
+    document.getElementById('camBtn').textContent        = '⏻ LIGAR CÂMERA';
+    document.getElementById('camBtn').className          = 'cam-btn on';
+    document.getElementById('camDot').className          = 'status-dot'; // Ponto cinza (inativo)
+    document.getElementById('camStatus').textContent     = 'CÂMERA INATIVA';
+    document.getElementById('camOverlay').style.display  = 'flex';  // Mostra overlay de câmera desligada
+    document.getElementById('camSelectWrap').style.display = 'none'; // Oculta seletor de câmeras
+    document.getElementById('fpsLive').textContent       = '0';
+
+    setStatus('Câmera desligada.');
+    procCtx.clearRect(0, 0, procC.width, procC.height); // Limpa o canvas de exibição
+  }
+}
+
+// ============================================================
+// MAPA DE LABELS DOS ALGORITMOS
+// Associa o identificador interno ao texto exibido no canvas
+// ============================================================
+const algoLabels = {
+  camera:  'IMAGEM DA CÂMERA',
+  lasca:   'LASCA — Laser Speckle Contrast',
+  mhi:     'MHI — Motion History Image',
+  regions: 'REGIÕES — Detecção de Atividade'
+};
+
+// ============================================================
+// FUNÇÕES DE INTERFACE (UI HELPERS)
+// ============================================================
+
+// Seleciona o algoritmo ativo e atualiza a interface correspondente
+function selectAlgo(algo) {
+  state.algo = algo;      // Atualiza o estado global
+  state.mhiBuffer = [];   // Reseta o buffer do MHI ao trocar de algoritmo
+
+  // Atualiza o visual dos itens da lista (remove/adiciona classe 'selected')
+  document.querySelectorAll('.algo-item').forEach(el => {
+    el.classList.toggle('selected', el.dataset.algo === algo);
+  });
+
+  // Oculta todos os painéis de parâmetros e exibe apenas o do algoritmo ativo
+  document.querySelectorAll('.param-section').forEach(el => el.classList.remove('active'));
+  const ps = document.getElementById('params-' + algo);
+  if (ps) ps.classList.add('active');
+
+  // Atualiza o label sobreposto no canvas e o campo de info do frame
+  document.getElementById('procLabel').textContent = algoLabels[algo] || algo.toUpperCase();
+  document.getElementById('infoAlgo').textContent  = algo.toUpperCase();
+
+  setStatus(`Algoritmo selecionado: ${algo.toUpperCase()}`);
+}
+
+// Ativa/desativa o histograma
+function toggleHistogram() {
+  state.histEnabled = !state.histEnabled;
+  document.getElementById('histToggle').classList.toggle('on', state.histEnabled);
+}
+
+// Ativa/desativa o processamento de imagem
+function toggleProc() {
+  state.procEnabled = !state.procEnabled;
+  document.getElementById('procToggle').classList.toggle('on', state.procEnabled);
+}
+
+// Ativa a coloração artificial da câmera (desativa cinza automaticamente)
+function toggleColorCam() {
+  state.camColorVal = !state.camColorVal;
+  state.camGrayVal  = false; // Garante exclusividade mútua
+  document.getElementById('colorToggleCam').classList.toggle('on', state.camColorVal);
+  document.getElementById('grayToggleCam').classList.remove('on');
+}
+
+// Ativa a escala de cinza da câmera (desativa cor artificial automaticamente)
+function toggleGrayCam() {
+  state.camGrayVal  = !state.camGrayVal;
+  state.camColorVal = false; // Garante exclusividade mútua
+  document.getElementById('grayToggleCam').classList.toggle('on', state.camGrayVal);
+  document.getElementById('colorToggleCam').classList.remove('on');
+}
+
+// Trava/destrava o passo do LASCA (quando travado, passo = tamanho da janela)
+function toggleLock() {
+  state.lascaLockVal = !state.lascaLockVal;
+  document.getElementById('lascaLock').classList.toggle('on', state.lascaLockVal);
+  document.getElementById('lascaStep').disabled = state.lascaLockVal; // Desabilita o select de passo
+}
+
+// Função genérica para alternar qualquer valor booleano do estado
+// key: nome da propriedade no state (ex: 'lascaColorVal')
+function toggleVal(key) {
+  state[key] = !state[key];
+  const id = key.replace('Val', ''); // Remove 'Val' para obter o ID do elemento (ex: 'lascaColor')
+  document.getElementById(id)?.classList.toggle('on', state[key]);
+}
+
+// Atualiza o FPS alvo ao mover o slider
+function updateFPS(el) {
+  state.fpsTarget = parseInt(el.value);
+  document.getElementById('fpsVal').textContent = el.value; // Exibe o valor ao lado do slider
+}
+
+// Atualiza o valor exibido ao lado de qualquer slider de parâmetro
+// el: elemento <input type="range"> | valId: ID do <span> que exibe o valor
+function updateSlider(el, valId) {
+  document.getElementById(valId).textContent = el.value;
+}
+
+// Placeholder para onchange dos <select> de parâmetros (não requer ação imediata)
+function updateParam() {}
+
+// Reseta todos os parâmetros para os valores padrão
+function resetParams() {
+  document.getElementById('mhiThresh').value=40;  document.getElementById('mhiThreshVal').textContent=40;
+  document.getElementById('mhiBuf').value=8;      document.getElementById('mhiBufVal').textContent=8;
+  document.getElementById('regThresh').value=60;  document.getElementById('regThreshVal').textContent=60;
+  document.getElementById('regBlur').value=2;     document.getElementById('regBlurVal').textContent=2;
+  document.getElementById('regWidth').value=2;    document.getElementById('regWidthVal').textContent=2;
+  document.getElementById('fpsSlider').value=10;  document.getElementById('fpsVal').textContent=10;
+  state.fpsTarget = 10;
+  setStatus('Parâmetros resetados.');
+}
+
+// Atualiza a mensagem da barra de status inferior
+function setStatus(msg) {
+  document.getElementById('statusMsg').textContent = msg;
+}
+
+// Salva o frame atual do canvas de processamento como imagem PNG
+function saveProcessed() {
+  const link = document.createElement('a');
+  link.download = `speckle_${state.algo}_${Date.now()}.png`; // Nome: algoritmo + timestamp
+  link.href = procC.toDataURL(); // Converte o canvas para URL de dados (base64 PNG)
+  link.click(); // Dispara o download automaticamente
+  setStatus('Imagem processada salva.');
+}
+
+// Variável de controle para nomenclatura de sequências salvas
+let seqCount = 0;
+
+// Salva uma sequência de frames (10 imagens) com intervalo baseado no FPS alvo
+function saveSequence() {
+  if (!state.cameraOn) { setStatus('Câmera desligada.'); return; }
+  let n = 0;
+  const max = 10; // Número de frames a salvar
+  const iv = setInterval(() => {
+    if (n >= max) { clearInterval(iv); setStatus(`Sequência de ${max} frames salva.`); return; }
+    const link = document.createElement('a');
+    link.download = `seq_${seqCount}_frame${n+1}.png`;
+    link.href = procC.toDataURL();
+    link.click();
+    n++;
+  }, Math.round(1000/state.fpsTarget) + 100); // Intervalo entre saves = período do FPS + 100ms de margem
+  seqCount++;
+}
+
+// Abre o seletor de arquivo do sistema para carregar um vídeo local
+function loadVideo() { document.getElementById('videoInput').click(); }
+
+// Processa o arquivo de vídeo selecionado e inicia a reprodução
+function loadVideoFile(input) {
+  const file = input.files[0];
+  if (!file) return; // Nenhum arquivo selecionado
+
+  if (state.cameraOn) toggleCamera(); // Desliga a câmera antes de carregar o vídeo
+
+  const url = URL.createObjectURL(file); // Cria URL temporária para o arquivo local
+  video.srcObject = null; // Remove qualquer stream de câmera anterior
+  video.src  = url;       // Define a fonte do vídeo
+  video.loop = true;      // Reprodução em loop contínuo
+  video.play();           // Inicia a reprodução
+
+  // Atualiza o estado e interface para o modo de vídeo
+  state.cameraOn  = true;
+  state.videoMode = true;
+  document.getElementById('camDot').className      = 'status-dot active';
+  document.getElementById('camStatus').textContent = 'VÍDEO ATIVO';
+  document.getElementById('camOverlay').style.display = 'none';
+  document.getElementById('camBtn').textContent    = '⏻ PARAR VÍDEO';
+  document.getElementById('camBtn').className      = 'cam-btn off';
+
+  setStatus('Reproduzindo vídeo: ' + file.name);
+  state.lastTime = 0;
+  state.animId   = requestAnimationFrame(loop); // Inicia o loop de processamento
+}
+
+// Exibe informações sobre o sistema
+function showAbout() {
+  alert(
+    'Biospeckle Tool — Versão Online\n\n' +
+    'Sistema de análise de Biospeckle\n\n' +
+    'Algoritmos:\n' +
+    '• LASCA — Laser Speckle Contrast Analysis\n' +
+    '• MHI — Motion History Image\n' +
+    '• Regiões — Detecção de área de atividade'
+  );
+}
+
+// ============================================================
+// INICIALIZAÇÃO
+// Executado uma única vez ao carregar a página
+// ============================================================
+document.getElementById('lascaStep').disabled = true; // Desabilita o select de passo (modo clássico ativo por padrão)
+setStatus('Sistema pronto. Clique em "Ligar Câmera" para iniciar.');
+
+</script>
+</body>
+</html>
